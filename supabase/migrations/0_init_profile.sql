@@ -1,6 +1,3 @@
--- Enable required extensions
-create extension if not exists "uuid-ossp";
-
 -- User Profile table (extends Supabase auth.users)
 create table public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
