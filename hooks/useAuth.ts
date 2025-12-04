@@ -22,7 +22,7 @@ export function useAuth(): UseAuthReturn {
   // Helper functions
   const clearError = () => setError(null);
 
-  const fetchUserProfile = async (userId: string, userEmail: string) => {
+  const fetchUserProfile = async (userId: string, userEmail: string, retryCount = 0) => {
     try {
       const [profileResponse, usageResponse] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", userId).single(),
@@ -34,7 +34,20 @@ export function useAuth(): UseAuthReturn {
           .maybeSingle(),
       ]);
 
-      if (profileResponse.error) throw profileResponse.error;
+      // If profile doesn't exist (new OAuth user), wait and retry a few times
+      if (profileResponse.error && profileResponse.error.code === 'PGRST116' && retryCount < 3) {
+        console.log(`Profile not found, retrying... (attempt ${retryCount + 1})`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return fetchUserProfile(userId, userEmail, retryCount + 1);
+      }
+
+      if (profileResponse.error) {
+        console.error("Error fetching profile:", profileResponse.error);
+        // Don't sign out on profile error - just log it
+        // The profile might be created by a trigger that's still processing
+        setIsLoading(false);
+        return;
+      }
 
       setUser({
         ...profileResponse.data,
@@ -43,7 +56,8 @@ export function useAuth(): UseAuthReturn {
       });
     } catch (error) {
       console.error("Critical error fetching user profile:", error);
-      await signOut();
+      // Don't sign out immediately - this might be a temporary issue
+      setIsLoading(false);
     } finally {
       setIsLoading(false);
     }
@@ -96,12 +110,26 @@ export function useAuth(): UseAuthReturn {
 
   const handleGoogleLogin = async () => {
     try {
-      await supabase.auth.signInWithOAuth({
+      clearError();
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
+      
+      if (error) {
+        console.error("OAuth error:", error);
+        setError(error.message);
+      } else if (data?.url) {
+        // Redirect will happen automatically via Supabase
+        console.log("OAuth URL generated:", data.url);
+        window.location.href = data.url;
+      }
     } catch (error: any) {
       setError(error.message);
       console.error("Error with Google login:", error);
@@ -134,12 +162,20 @@ export function useAuth(): UseAuthReturn {
       try {
         const {
           data: { session },
+          error: sessionError,
         } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Session error:", sessionError);
+        }
+        
+        console.log("Session retrieved:", session ? "Found" : "Not found");
         await updateSessionState(session);
       } catch (error: any) {
         console.error("Error initializing auth:", error);
         setError(error.message);
-        await signOut();
+        // Don't sign out on init error - might be temporary
+        setIsLoading(false);
       }
     };
 
@@ -147,8 +183,17 @@ export function useAuth(): UseAuthReturn {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      updateSessionState(session);
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session ? "Has session" : "No session");
+      
+      // Handle OAuth callback events
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        await updateSessionState(session);
+      } else if (event === 'SIGNED_OUT') {
+        await updateSessionState(null);
+      } else {
+        await updateSessionState(session);
+      }
     });
 
     return () => subscription.unsubscribe();

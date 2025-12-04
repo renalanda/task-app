@@ -14,7 +14,10 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    // Don't redirect while loading - this gives OAuth callbacks time to process
+    if (isLoading) {
+      return;
+    }
 
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
 
@@ -27,7 +30,10 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, isLoading, pathname, router]);
 
-  if (!isReady) return <LoadingSkeleton />;
+  // Show loading while checking auth state or during OAuth callback processing
+  if (!isReady || isLoading) {
+    return <LoadingSkeleton />;
+  }
 
   return <>{children}</>;
 }
