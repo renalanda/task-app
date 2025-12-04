@@ -45,8 +45,8 @@ export default function AuthCallback() {
       }
 
       // Try to exchange code if we have one
-      if (code || hashCode) {
-        const codeToUse = code || hashCode;
+      const codeToUse = code || hashCode;
+      if (codeToUse) {
         try {
           setStatus("Exchanging authorization code for session...");
           console.log("Exchanging code for session...");
