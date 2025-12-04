@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Task } from "@/types/models";
-import { createBrowserClient } from '@supabase/ssr'
+import { createSupabaseClient } from "@/lib/supabase-client";
 import {
   TaskState,
   TasksState,
@@ -27,10 +27,7 @@ export function useTaskManager(taskId?: string): UseTaskManagerReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   // Fetch single task
   useEffect(() => {

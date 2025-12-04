@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useTaskManager } from "@/hooks/useTaskManager";
 import { Button } from "@/components/ui/button";

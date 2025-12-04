@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import { User } from "@/types/models";
 import { UseAuthReturn } from "@/types/auth";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase-client";
 
 export function useAuth(): UseAuthReturn {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   // State
   const [session, setSession] = useState<any>(null);

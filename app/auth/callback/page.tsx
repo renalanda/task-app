@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase-client";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 
 export default function AuthCallback() {
@@ -12,10 +12,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabase = createSupabaseClient();
 
       // Check for errors in query params
       const error_description = searchParams.get("error_description");
